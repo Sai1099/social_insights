@@ -25,14 +25,13 @@ def home():
 
 @app.route('/api/page/<username>', methods=['GET'])
 def get_page_details(username):
-    # Check if page exists in database
+    
     page_data = profile.find_one({"page_url": username})
     
     if not page_data:
-        # If page not found, scrape it
         try:
             driver = webdriver.Chrome()
-            # Using your existing scraping functions
+           
             username = os.getenv('USERNAME')
             password = os.getenv('PASSWORD')
             facebook_login(driver, username, password)
@@ -41,7 +40,7 @@ def get_page_details(username):
             if page_url:
                 details = scrape_page(driver, page_url)
                 if details:
-                    # Store in database
+                 
                     details['created_at'] = datetime.now()
                     profile.insert_one(details)
                     page_data = details
@@ -56,7 +55,7 @@ def get_page_details(username):
 
 @app.route('/api/pages', methods=['GET'])
 def get_pages():
-    # Get query parameters
+
     min_followers = request.args.get('min_followers', type=int)
     max_followers = request.args.get('max_followers', type=int)
     category = request.args.get('category')
@@ -64,7 +63,7 @@ def get_pages():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
-    # Build query
+    
     query = {}
     if min_followers and max_followers:
         query['followers'] = {'$gte': min_followers, '$lte': max_followers}
@@ -73,14 +72,11 @@ def get_pages():
     if name:
         query['page_name'] = {'$regex': name, '$options': 'i'}
     
-    # Calculate skip value for pagination
     skip = (page - 1) * per_page
-    
-    # Execute query with pagination
+
     results = profile.find(query).skip(skip).limit(per_page)
     total = profile.count_documents(query)
-    
-    # Prepare response
+ 
     pages_data = list(results)
     response = {
         "pages": parse_json(pages_data),
@@ -96,13 +92,12 @@ def get_pages():
 def get_page_posts(username):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    
-    # Get page data
+
     page_data = profile.find_one({"page_url": username})
     if not page_data or 'posts' not in page_data:
         return jsonify({"error": "Page or posts not found"}), 404
     
-    # Calculate pagination
+
     start = (page - 1) * per_page
     end = start + per_page
     posts = page_data['posts'][start:end] if 'posts' in page_data else []
@@ -121,12 +116,11 @@ def get_page_followers(username):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
-    # Get page data
+
     page_data = profile.find_one({"page_url": username})
     if not page_data or 'followers_list' not in page_data:
         return jsonify({"error": "Page or followers not found"}), 404
-    
-    # Calculate pagination
+
     start = (page - 1) * per_page
     end = start + per_page
     followers = page_data['followers_list'][start:end] if 'followers_list' in page_data else []
@@ -140,7 +134,6 @@ def get_page_followers(username):
     
     return jsonify(response)
 
-# Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
     return jsonify({"error": "Resource not found"}), 404
