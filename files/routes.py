@@ -11,6 +11,9 @@ from bson import json_util
 import json
 from datetime import datetime
 from files.scrapper import facebook_login, visit_facebook_profile, scrape_page
+from os import environ as env
+import os
+
 
 # Helper function to parse MongoDB results
 def parse_json(data):
@@ -30,7 +33,9 @@ def get_page_details(username):
         try:
             driver = webdriver.Chrome()
             # Using your existing scraping functions
-            facebook_login(driver, "contact.nebulaapparel@gmail.com", "qwerty12345")
+            username = os.getenv('USERNAME')
+            password = os.getenv('PASSWORD')
+            facebook_login(driver, username, password)
             page_url = visit_facebook_profile(driver, username)
             
             if page_url:

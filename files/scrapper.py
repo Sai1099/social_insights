@@ -14,9 +14,9 @@ def facebook_login(driver,email,password):
   driver.get('https://www.facebook.com/login')
   wait = WebDriverWait(driver, 10)
   email_field =wait.until(EC.element_to_be_clickable((By.XPATH,"""//*[@id="email"]""")))
-  email_field.send_keys("contact.nebulaapparel@gmail.com") 
+  email_field.send_keys(email) 
   password_field = wait.until(EC.element_to_be_clickable((By.XPATH,"""//*[@id="pass"]""")))
-  password_field.send_keys("qwerty12345")
+  password_field.send_keys(password)
 
   login_button = wait.until(EC.element_to_be_clickable((By.XPATH, """//*[@id="loginbutton"]""")))
   login_button.click()
