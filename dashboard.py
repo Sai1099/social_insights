@@ -336,14 +336,17 @@ def load_data():
     _SRC_FIELDS      = ("handle", "original_date", "category", "likes", "views", "text", "summary")
 
     def _find_src_start(rr):
-        """Return index of first valid Twitter handle in rr, scanning positions 5-25."""
-        for i in range(5, min(len(rr), 26)):
+        """Return index of first valid Twitter handle in rr, scanning positions 5-25.
+        Requires position +2 to be a known category to avoid false positives in
+        content fields (yf_prices, article_summary, etc.) that happen to look like handles."""
+        for i in range(5, min(len(rr) - 2, 26)):
             v = rr[i].strip()
             if (v
                     and not v.isdigit()
                     and _HANDLE_RE_SCAN.match(v)
                     and v.lower() not in _BAD_SCAN
-                    and v not in _CAT_SCAN):
+                    and v not in _CAT_SCAN
+                    and rr[i + 2].strip() in _CAT_SCAN):
                 return i
         return None
 
