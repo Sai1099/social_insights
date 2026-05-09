@@ -356,14 +356,19 @@ def load_data():
             continue
         rec = dict(zip(header, raw_row))
 
-        # Fix tweet_text when is_thread leaked into position 2 (Type-A rows)
+        # Fix tweet_text when is_thread leaked into position 2 (Type-A rows).
+        # _metric_fix_needed = True means our_* values are unreliable and need recovery.
+        _metric_fix_needed = False
         if rec.get("tweet_text", "") in ("True", "False", "true", "false") and len(raw_row) > 4:
             rec["tweet_text"] = raw_row[4]
-            # Only zero out our_* if dict(zip) gave a non-numeric value (misaligned format).
-            # When raw_row[26] is already the correct numeric our_views, preserve it.
             if not str(rec.get("our_views", "")).strip().isdigit():
                 for _mc in ("our_likes", "our_views", "our_replies", "our_retweets", "our_quotes"):
                     rec[_mc] = "0"
+                _metric_fix_needed = True
+            # else: raw_row[26] is already a valid numeric our_views — keep it
+        else:
+            # No is_thread issue; flag if dict(zip) our_views is non-numeric
+            _metric_fix_needed = not str(rec.get("our_views", "")).strip().isdigit()
 
         # Recover src handles for any row wider than the 31-col header
         if len(raw_row) > 31:
@@ -373,27 +378,35 @@ def load_data():
                 for _si in range(1, 9):
                     for _f in _SRC_FIELDS:
                         rec[f"src{_si}_{_f}"] = ""
-                # Only apply positional correction when dict(zip) gave a non-numeric
-                # our_views (e.g. a leaked date string from a misaligned format).
-                # When raw_row[26] is already the correct numeric value, keep it.
-                _ov_zip = str(rec.get("our_views", "")).strip()
-                if not _ov_zip.isdigit():
+
+                # Path 1 – positional formula: our_* sit immediately BEFORE the src block
+                if _metric_fix_needed:
                     _om = _src_pos - 5
                     if _om >= 0:
-                        _cand_views = raw_row[_om + 1] if _om + 1 < len(raw_row) else ""
-                        if _cand_views.strip().isdigit():
+                        _cv = raw_row[_om + 1] if _om + 1 < len(raw_row) else ""
+                        if _cv.strip().isdigit():
                             rec["our_likes"]    = raw_row[_om]     if _om     < len(raw_row) else "0"
-                            rec["our_views"]    = _cand_views
+                            rec["our_views"]    = _cv
                             rec["our_replies"]  = raw_row[_om + 2] if _om + 2 < len(raw_row) else "0"
                             rec["our_retweets"] = raw_row[_om + 3] if _om + 3 < len(raw_row) else "0"
                             rec["our_quotes"]   = raw_row[_om + 4] if _om + 4 < len(raw_row) else "0"
-                # Recover src blocks (7 fields each)
+                            _metric_fix_needed = False
+
+                # Recover src blocks (7 fields each); track end position for path 2
+                _after_src = None
                 for _si in range(1, 9):
                     _base = _src_pos + (_si - 1) * 7
                     if _base >= len(raw_row):
                         break
                     _h = raw_row[_base].strip()
-                    if not _h or _h.startswith("http"):
+                    _h_valid = (
+                        _h and not _h.isdigit()
+                        and _HANDLE_RE_SCAN.match(_h)
+                        and _h.lower() not in _BAD_SCAN
+                        and _h not in _CAT_SCAN
+                    )
+                    if not _h_valid:
+                        _after_src = _base
                         break
                     rec[f"src{_si}_handle"]        = _h
                     rec[f"src{_si}_original_date"] = raw_row[_base + 1] if _base + 1 < len(raw_row) else ""
@@ -402,6 +415,17 @@ def load_data():
                     rec[f"src{_si}_views"]         = raw_row[_base + 4] if _base + 4 < len(raw_row) else ""
                     rec[f"src{_si}_text"]          = raw_row[_base + 5] if _base + 5 < len(raw_row) else ""
                     rec[f"src{_si}_summary"]       = raw_row[_base + 6] if _base + 6 < len(raw_row) else ""
+
+                # Path 2 – after-src fallback: our_* sit immediately AFTER all src blocks
+                # (handles rows where src blocks fill past position 26)
+                if _metric_fix_needed and _after_src is not None:
+                    _cv = raw_row[_after_src + 1] if _after_src + 1 < len(raw_row) else ""
+                    if _cv.strip().isdigit():
+                        rec["our_likes"]    = raw_row[_after_src]     if _after_src     < len(raw_row) else "0"
+                        rec["our_views"]    = _cv
+                        rec["our_replies"]  = raw_row[_after_src + 2] if _after_src + 2 < len(raw_row) else "0"
+                        rec["our_retweets"] = raw_row[_after_src + 3] if _after_src + 3 < len(raw_row) else "0"
+                        rec["our_quotes"]   = raw_row[_after_src + 4] if _after_src + 4 < len(raw_row) else "0"
 
         records.append(rec)
 
