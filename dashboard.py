@@ -297,10 +297,11 @@ def _fetch_csv_raw() -> str:
             resp = _req.get(
                 f"{VM_API_URL}/data",
                 headers={"X-API-Key": VM_API_KEY},
-                timeout=15,
+                timeout=60,   # generous timeout; VM converts full parquet → CSV
+                stream=True,
             )
             resp.raise_for_status()
-            return resp.text
+            return resp.content.decode("utf-8", errors="replace")
         except Exception:
             pass
     # Local fallback
