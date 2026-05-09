@@ -867,10 +867,13 @@ elif page == "engagement":
         top_tbl = top_df[["date", "preview", "threads", "our_views", "our_likes", "our_replies"]].copy()
         top_tbl.columns = ["Date", "Tweet", "Thread", "Views", "Likes", "Replies"]
         st.dataframe(
-            top_tbl.style.background_gradient(subset=["Views"], cmap="Blues"),
+            top_tbl,
             use_container_width=True,
             hide_index=True,
             height=min(50 + len(top_tbl) * 38, 360),
+            column_config={"Views": st.column_config.ProgressColumn(
+                "Views", min_value=0, max_value=int(top_tbl["Views"].max() or 1), format="%d"
+            )},
         )
     else:
         st.markdown(
