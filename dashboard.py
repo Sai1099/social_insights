@@ -359,8 +359,11 @@ def load_data():
         # Fix tweet_text when is_thread leaked into position 2 (Type-A rows)
         if rec.get("tweet_text", "") in ("True", "False", "true", "false") and len(raw_row) > 4:
             rec["tweet_text"] = raw_row[4]
-            for _mc in ("our_likes", "our_views", "our_replies", "our_retweets", "our_quotes"):
-                rec[_mc] = "0"
+            # Only zero out our_* if dict(zip) gave a non-numeric value (misaligned format).
+            # When raw_row[26] is already the correct numeric our_views, preserve it.
+            if not str(rec.get("our_views", "")).strip().isdigit():
+                for _mc in ("our_likes", "our_views", "our_replies", "our_retweets", "our_quotes"):
+                    rec[_mc] = "0"
 
         # Recover src handles for any row wider than the 31-col header
         if len(raw_row) > 31:
@@ -370,22 +373,20 @@ def load_data():
                 for _si in range(1, 9):
                     for _f in _SRC_FIELDS:
                         rec[f"src{_si}_{_f}"] = ""
-                # In formats where our_* precede the src block (handle_pos >= 17),
-                # dict(zip) maps the wrong raw positions → fix them now.
-                # Also fix when dict(zip) gave a non-numeric value (leaked date etc.)
+                # Only apply positional correction when dict(zip) gave a non-numeric
+                # our_views (e.g. a leaked date string from a misaligned format).
+                # When raw_row[26] is already the correct numeric value, keep it.
                 _ov_zip = str(rec.get("our_views", "")).strip()
-                _ov_zip_bad = not _ov_zip.isdigit()
-                _om = _src_pos - 5
-                if (_src_pos >= 17 or _ov_zip_bad) and _om >= 0:
-                    _cand_views = raw_row[_om + 1] if _om + 1 < len(raw_row) else ""
-                    # Sanity-check: only override if candidate is numeric or we're in
-                    # a known new-format layout (src_pos >= 17)
-                    if _src_pos >= 17 or _cand_views.strip().isdigit():
-                        rec["our_likes"]    = raw_row[_om]     if _om     < len(raw_row) else "0"
-                        rec["our_views"]    = _cand_views
-                        rec["our_replies"]  = raw_row[_om + 2] if _om + 2 < len(raw_row) else "0"
-                        rec["our_retweets"] = raw_row[_om + 3] if _om + 3 < len(raw_row) else "0"
-                        rec["our_quotes"]   = raw_row[_om + 4] if _om + 4 < len(raw_row) else "0"
+                if not _ov_zip.isdigit():
+                    _om = _src_pos - 5
+                    if _om >= 0:
+                        _cand_views = raw_row[_om + 1] if _om + 1 < len(raw_row) else ""
+                        if _cand_views.strip().isdigit():
+                            rec["our_likes"]    = raw_row[_om]     if _om     < len(raw_row) else "0"
+                            rec["our_views"]    = _cand_views
+                            rec["our_replies"]  = raw_row[_om + 2] if _om + 2 < len(raw_row) else "0"
+                            rec["our_retweets"] = raw_row[_om + 3] if _om + 3 < len(raw_row) else "0"
+                            rec["our_quotes"]   = raw_row[_om + 4] if _om + 4 < len(raw_row) else "0"
                 # Recover src blocks (7 fields each)
                 for _si in range(1, 9):
                     _base = _src_pos + (_si - 1) * 7
