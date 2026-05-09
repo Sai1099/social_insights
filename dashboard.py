@@ -15,7 +15,7 @@ VM_API_URL = os.getenv("VM_API_URL", "")
 VM_API_KEY = os.getenv("VM_API_KEY", "")
 
 st.set_page_config(
-    page_title="PKC Capital · Social",
+    page_title="Social Insights",
     layout="wide",
     page_icon="📊",
     initial_sidebar_state="expanded",
@@ -496,7 +496,7 @@ if "page" not in st.session_state:
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("<div style='padding:8px 4px 4px 4px;font-size:1rem;font-weight:700;color:#f0f0f0'>PKC Capital</div>", unsafe_allow_html=True)
+    st.markdown("<div style='padding:8px 4px 4px 4px;font-size:1rem;font-weight:700;color:#f0f0f0'>Social Insights</div>", unsafe_allow_html=True)
     st.markdown("<div style='font-size:0.72rem;color:#333;padding-bottom:12px'>Social Media Manager</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='sb-divider'></div>", unsafe_allow_html=True)
@@ -544,7 +544,7 @@ page = st.session_state.page
 
 # ── HOME ──────────────────────────────────────────────────────────────────────
 if page == "home":
-    st.markdown('<p class="page-title">PKC Capital Social</p>', unsafe_allow_html=True)
+    st.markdown('<p class="page-title">Social Insights</p>', unsafe_allow_html=True)
     st.markdown('<p class="page-sub">@FiDecoded · 𝕏 Twitter</p>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
