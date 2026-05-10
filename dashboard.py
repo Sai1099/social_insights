@@ -552,6 +552,7 @@ with st.sidebar:
         ("posts",      "📝", "Posts"),
         ("engagement", "📊", "Engagement Metrics"),
         ("pipeline",   "⚙️", "Pipeline Log"),
+        ("replybot",   "💬", "Auto Reply Bot"),
     ]
     for key, icon, label in pages:
         active_cls = "active" if st.session_state.page == key else ""
@@ -1086,3 +1087,107 @@ elif page == "pipeline":
                     _trace_label = "Full step trace" + (" — error debug" if _status == "error" else "")
                     with st.expander(_trace_label, expanded=(_status == "error")):
                         st.code("\n".join(_full_steps), language=None)
+
+# ── AUTO REPLY BOT ────────────────────────────────────────────────────────────
+elif page == "replybot":
+    st.markdown('<p class="page-title">Auto Reply Bot</p>', unsafe_allow_html=True)
+    st.markdown('<p class="page-sub">70/30 rule · replies posted by @FiDecoded · updated each run</p>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Fetch replied_tweets CSV from VM
+    _rdf = pd.DataFrame()
+    if VM_API_URL and VM_API_KEY:
+        try:
+            import requests as _req
+            _rr = _req.get(f"{VM_API_URL}/replies", headers={"X-API-Key": VM_API_KEY}, timeout=10)
+            if _rr.status_code == 200:
+                _rdf = pd.read_csv(io.StringIO(_rr.text))
+        except Exception as _re_err:
+            st.warning(f"Could not fetch replies from VM: {_re_err}")
+    else:
+        # Fallback: read local CSV if it exists
+        _local_csv = Path(__file__).parent / "replied_tweets.csv"
+        if _local_csv.exists():
+            _rdf = pd.read_csv(str(_local_csv))
+
+    if _rdf.empty:
+        st.markdown(
+            '<div style="background:#111;border:1px solid #1e1e1e;border-radius:8px;'
+            'padding:32px;text-align:center;color:#444;font-size:0.9rem">'
+            'No auto-replies yet — the bot posts during 9 AM–9 PM IST.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        # Summary stats
+        _total_replies = len(_rdf)
+        _accounts_hit  = _rdf["account"].nunique() if "account" in _rdf.columns else 0
+        _today_replies = 0
+        if "replied_at" in _rdf.columns:
+            _today_str = datetime.now().strftime("%Y-%m-%d")
+            _today_replies = int(_rdf["replied_at"].astype(str).str.startswith(_today_str).sum())
+
+        _c1, _c2, _c3 = st.columns(3)
+        _metric_style = (
+            'background:#111;border:1px solid #1c1c1c;border-radius:10px;'
+            'padding:18px 20px;text-align:center'
+        )
+        with _c1:
+            st.markdown(
+                f'<div style="{_metric_style}">'
+                f'<div style="font-size:1.8rem;font-weight:700;color:#fff">{_total_replies}</div>'
+                f'<div style="font-size:0.75rem;color:#444;margin-top:4px">Total Replies</div>'
+                f'</div>', unsafe_allow_html=True)
+        with _c2:
+            st.markdown(
+                f'<div style="{_metric_style}">'
+                f'<div style="font-size:1.8rem;font-weight:700;color:#fff">{_today_replies}</div>'
+                f'<div style="font-size:0.75rem;color:#444;margin-top:4px">Today</div>'
+                f'</div>', unsafe_allow_html=True)
+        with _c3:
+            st.markdown(
+                f'<div style="{_metric_style}">'
+                f'<div style="font-size:1.8rem;font-weight:700;color:#fff">{_accounts_hit}</div>'
+                f'<div style="font-size:0.75rem;color:#444;margin-top:4px">Accounts Targeted</div>'
+                f'</div>', unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Reply cards
+        st.markdown(
+            '<div style="font-size:0.72rem;color:#333;text-transform:uppercase;'
+            'letter-spacing:0.08em;margin-bottom:12px">Recent Replies</div>',
+            unsafe_allow_html=True,
+        )
+
+        for _, _row in _rdf.iterrows():
+            _acct     = str(_row.get("account", "—"))
+            _orig     = str(_row.get("original", ""))[:160]
+            _reply    = str(_row.get("our_reply", ""))
+            _ts       = str(_row.get("replied_at", ""))[:16].replace("T", "  ")
+            _age      = _row.get("tweet_age_min", "")
+            _age_str  = f"{float(_age):.0f} min old" if _age != "" else ""
+            _tid      = str(_row.get("tweet_id", ""))
+
+            st.markdown(
+                f'<div style="background:#111;border:1px solid #1c1c1c;border-radius:10px;'
+                f'padding:16px 20px;margin-bottom:10px">'
+
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+                f'<span style="color:#4caf50;font-size:0.82rem;font-weight:600">@{_acct}</span>'
+                f'<span style="color:#333;font-size:0.72rem">{_ts} IST'
+                f'{(" · " + _age_str) if _age_str else ""}</span>'
+                f'</div>'
+
+                f'<div style="font-size:0.78rem;color:#555;font-style:italic;'
+                f'border-left:2px solid #1e1e1e;padding-left:10px;margin-bottom:10px">'
+                f'{_orig}{"…" if len(str(_row.get("original",""))) > 160 else ""}'
+                f'</div>'
+
+                f'<div style="font-size:0.85rem;color:#ddd;line-height:1.5">'
+                f'{_reply}'
+                f'</div>'
+
+                f'</div>',
+                unsafe_allow_html=True,
+            )
