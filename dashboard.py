@@ -508,6 +508,15 @@ def _get_followers(df: pd.DataFrame) -> int | None:
         return None
 
 
+def _get_total_tweets(df: pd.DataFrame) -> int:
+    """Read total tweet count from profile — stored in our_total_tweets column by the pipeline."""
+    if not df.empty and "our_total_tweets" in df.columns:
+        val = df.loc[df["our_total_tweets"] > 0, "our_total_tweets"]
+        if not val.empty:
+            return int(val.iloc[0])
+    return 0
+
+
 def fmt_ts(dt):
     if pd.isna(dt):
         return "—"
@@ -585,7 +594,7 @@ if page == "home":
     st.markdown("<br>", unsafe_allow_html=True)
 
     followers = _get_followers(df)
-    total_posts   = len(df) if not df.empty else 0
+    total_posts   = _get_total_tweets(df) or (len(df) if not df.empty else 0)
     total_views   = int(df["our_views"].sum()) if not df.empty else 0
     total_likes   = int(df["our_likes"].sum()) if not df.empty else 0
     total_engage  = int((df["our_likes"] + df["our_replies"] + df["our_retweets"]).sum()) if not df.empty else 0
@@ -867,7 +876,7 @@ elif page == "engagement":
 
     # ── Stat cards ────────────────────────────────────────────────────────────
     eg1, eg2, eg3, eg4, eg5 = st.columns(5)
-    total_posts_eg = len(df) if not df.empty else 0
+    total_posts_eg = _get_total_tweets(df) or (len(df) if not df.empty else 0)
     for col, val, label, color in [
         (eg1, follower_str,           "Followers",       "#1d9bf0"),
         (eg2, f"{total_posts_eg:,}",  "Total Posts",     "#f0f0f0"),
