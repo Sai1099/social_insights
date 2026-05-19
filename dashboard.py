@@ -469,7 +469,7 @@ def load_data():
     else:
         df["articles_fetched"] = 0
 
-    for col in ("our_likes", "our_views", "our_replies", "our_retweets", "our_quotes", "our_followers"):
+    for col in ("our_likes", "our_views", "our_replies", "our_retweets", "our_quotes", "our_followers", "our_total_tweets"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
         else:
@@ -961,9 +961,10 @@ elif page == "engagement":
             st.markdown('<p class="page-sub" style="margin-bottom:8px">Likes & Replies per post</p>', unsafe_allow_html=True)
             if not chart_df.empty:
                 lrr = chart_df.melt(
-                    "posted_at",
-                    ["our_likes", "our_replies"],
-                    "metric", "value",
+                    id_vars="posted_at",
+                    value_vars=["our_likes", "our_replies"],
+                    var_name="metric",
+                    value_name="value",
                 )
                 lrr["metric"] = lrr["metric"].map({
                     "our_likes": "Likes",
